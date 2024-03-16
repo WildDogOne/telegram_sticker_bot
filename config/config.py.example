@@ -1,2 +1,4 @@
-token = "XXXXXXXXX"
-db = "stickers.db"
+token = "XXXXXXX"
+db = 'stickers.db'
+owner_id = 123
+default_user_id = 0

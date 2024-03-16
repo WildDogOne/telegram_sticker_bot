@@ -17,12 +17,31 @@ def init_db():
         """
         CREATE TABLE IF NOT EXISTS "stickers" (
         "user_id"  INTEGER NOT NULL,
-        "pack_id"  INT NOT NULL,
-        "sticker_id"  TEXT NOT NULL,
+        "pack_id"  TEXT NOT NULL,
+        "file_unique_id"  TEXT NOT NULL,
+        "file_id"  TEXT NOT NULL,
         "keywords"  TEXT,
         "emojies"  TEXT,
         "frequency" INT DEFAULT 0,
-        PRIMARY KEY("user_id","sticker_id","pack_id")
+        PRIMARY KEY("user_id","file_unique_id","pack_id")
+        );
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "users" (
+        "user_id"  INTEGER NOT NULL,
+        "current_pack"  TEXT NOT NULL,
+        PRIMARY KEY("user_id")
+        );
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_packs" (
+        "user_id"  INTEGER NOT NULL,
+        "pack"  TEXT NOT NULL,
+        PRIMARY KEY("user_id", "pack")
         );
         """
     )
@@ -40,6 +59,10 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
+    application.add_handler(InlineQueryHandler(inline_query))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("packs", get_packs))
+    application.add_handler(ChosenInlineResultHandler(chosen_inline_result))
     application.run_polling()
 
 
