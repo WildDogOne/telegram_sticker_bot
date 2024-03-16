@@ -1,4 +1,6 @@
 from telegram import (
+    Bot,
+    BotCommand,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
@@ -19,9 +21,26 @@ from telegram.ext import (
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
-from config.config import token, default_user_id
+from config.config import token, default_user_id, owner_id
 from global_functions import *
 
+
+# Helper function to send a message to the admin
+async def send_message_to_admin(text):
+    bot = Bot(token=token)
+    await bot.send_message(chat_id=owner_id, text=text)
+
+async def set_commands():
+    bot = Bot(token)
+
+    commands = [
+        BotCommand(command="/start", description="Start the bot"),
+        BotCommand(command="/help", description="Get help information"),
+        BotCommand(command="/packs", description="Get your packs"),
+        # Add more commands as needed
+    ]
+
+    await bot.set_my_commands(commands)
 
 # Telegram Bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -29,6 +48,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Hi! Send me a sticker and I will store it for you.\n"
         "After that, you can use the inline mode to search for your stickers."
     )
+    await set_commands()
+
     user_id = update.effective_user.id
     pack_id = "default"
     pack = "default"
@@ -38,9 +59,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             (user_id, pack_id),
         )
     except Exception as e:
-        await update.message.reply_text("I already know you!")
-        logger.error("Error while saving user")
-        logger.error(e)
+        if type(e).__name__ == "IntegrityError":
+            await update.message.reply_text("I already know you!")
+            logger.info(f"Error while saving user {user_id}, user already exists")
+            logger.info(e)
+        else:
+            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
     try:
         c.execute(
             "INSERT INTO user_packs (user_id, pack) VALUES (?, ?)",
@@ -48,8 +72,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         conn.commit()
     except Exception as e:
-        logger.error("Error while saving user packs")
-        logger.error(e)
+        if type(e).__name__ == "IntegrityError":
+            logger.info(f"Error while adding default pack to user {user_id}")
+            logger.info(e)
+        else:
+            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
+
 
 async def get_packs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
@@ -59,9 +87,11 @@ async def get_packs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     results = c.fetchall()
     if len(results) == 0:
-        await update.message.reply_text("You don't have any packs yet!\nUse /start to create a profile")
+        await update.message.reply_text(
+            "You don't have any packs yet!\nUse /start to create a profile"
+        )
     else:
-        x  = ""
+        x = ""
         for result in results:
             x += result[0] + "\n"
         await update.message.reply_text(x)
@@ -96,6 +126,7 @@ async def keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Error while saving!")
         logger.error("Error while saving sticker")
         logger.error(e)
+        await send_message_to_admin(f"Error while saving sticker\n{e}")
     return ConversationHandler.END
 
 
@@ -115,14 +146,15 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     print(query)
 
     # Fetch favorites from the database
+    SQL_QUERY = "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? ORDER BY frequency DESC"
     c.execute(
-        "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? ORDER BY frequency DESC",
+        SQL_QUERY,
         (user_id,),
     )
     results = c.fetchall()
     if len(results) == 0:
         c.execute(
-            "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? ORDER BY frequency DESC",
+            SQL_QUERY,
             (default_user_id,),
         )
         results = c.fetchall()
@@ -140,7 +172,6 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             favourites.append(x)
         else:
             if query.strip() in emojies:
-                print("test")
                 favourites.append(x)
             elif fuzz.token_set_ratio(query, keywords) > 50:
                 favourites.append(x)
@@ -157,8 +188,11 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Answer the inline query
     await update.inline_query.answer(results, cache_time=0)
 
+
 # Function to update the frequency of the sticker used
-async def chosen_inline_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def chosen_inline_result(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     file_unique_id = update.chosen_inline_result.result_id
     user_id = update.chosen_inline_result.from_user.id
     c.execute(
@@ -170,6 +204,7 @@ async def chosen_inline_result(update: Update, context: ContextTypes.DEFAULT_TYP
         Update stickers
         Set frequency = frequency + 1
         Where user_id = ? AND file_unique_id = ?
-        """, (user_id, file_unique_id)
+        """,
+        (user_id, file_unique_id),
     )
     conn.commit()
