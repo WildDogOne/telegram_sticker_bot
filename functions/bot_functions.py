@@ -7,6 +7,8 @@ from telegram import (
     InlineQueryResultArticle,
     InputTextMessageContent,
     InlineQueryResultCachedSticker,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
 )
 from telegram.ext import (
     Application,
@@ -22,13 +24,26 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
 from config.config import token, default_user_id, owner_id
-from global_functions import *
+from functions.global_functions import *
 
 
 # Helper function to send a message to the admin
 async def send_message_to_admin(text):
     bot = Bot(token=token)
     await bot.send_message(chat_id=owner_id, text=text)
+
+
+async def get_current_pack(user_id):
+    c.execute(
+        "SELECT current_pack FROM users WHERE user_id = ?",
+        (user_id,),
+    )
+    results = c.fetchall()
+    if len(results) == 0:
+        return "default"
+    else:
+        return results[0][0]
+
 
 async def set_commands():
     bot = Bot(token)
@@ -37,10 +52,13 @@ async def set_commands():
         BotCommand(command="/start", description="Start the bot"),
         BotCommand(command="/help", description="Get help information"),
         BotCommand(command="/packs", description="Get your packs"),
+        BotCommand(command="/pack", description="Set Pack"),
+        BotCommand(command="/newpack", description="New pack"),
         # Add more commands as needed
     ]
 
     await bot.set_my_commands(commands)
+
 
 # Telegram Bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -97,6 +115,73 @@ async def get_packs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(x)
 
 
+### Pack Handlers
+#### Add a new pack
+async def newpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("What is the name of the pack?")
+    return PACKNAME
+
+
+async def packname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    pack = update.message.text
+    # context.user_data["packname"] = (user_id)
+    try:
+        c.execute(
+            "INSERT INTO user_packs (user_id, pack) VALUES (?, ?)",
+            (user_id, pack),
+        )
+        conn.commit()
+        await update.message.reply_text("Pack added!")
+    except Exception as e:
+        if type(e).__name__ == "IntegrityError":
+            await update.message.reply_text("You already have a pack with that name")
+            logger.info(f"Error while adding duplicate pack to user {user_id}")
+            logger.info(e)
+        else:
+            await send_message_to_admin(
+                f"Error while adding pack to user {user_id}\n{e}"
+            )
+
+
+async def pack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    print(user_id)
+    c.execute(
+        "SELECT pack FROM user_packs WHERE user_id = ?",
+        (user_id,),
+    )
+    results = c.fetchall()
+    keyboard = []
+    for x in results:
+        keyboard.append([KeyboardButton(x[0])])
+    pprint(keyboard)
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard, resize_keyboard=True, one_time_keyboard=True
+    )
+
+    await update.message.reply_text(
+        "Which pack do you want to use?", reply_markup=reply_markup
+    )
+    return SELECTPACK
+
+
+async def selectpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    pack = update.message.text
+    c.execute(
+        """
+        Update users
+        Set current_pack = ?
+        Where user_id = ?
+        """,
+        (pack, user_id),
+    )
+    conn.commit()
+    await update.message.reply_text(f"Selected {pack}")
+
+
+### Sticker Handler
 async def sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     file_id = update.message.sticker.file_id
@@ -113,7 +198,8 @@ async def sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keywords = update.message.text
     user_id, file_id, file_unique_id, emojies = context.user_data["sticker"]
-    pack_id = "default"
+    # pack_id = "default"
+    pack_id = await get_current_pack(user_id)
     print(user_id, pack_id, file_unique_id, file_id, keywords, emojies)
     try:
         c.execute(
@@ -144,18 +230,19 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user_id = update.inline_query.from_user.id
     print(user_id)
     print(query)
+    pack_id = await get_current_pack(user_id)
 
     # Fetch favorites from the database
-    SQL_QUERY = "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? ORDER BY frequency DESC"
+    SQL_QUERY = "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? AND pack_id = ? ORDER BY frequency DESC"
     c.execute(
         SQL_QUERY,
-        (user_id,),
+        (user_id, pack_id),
     )
     results = c.fetchall()
     if len(results) == 0:
         c.execute(
             SQL_QUERY,
-            (default_user_id,),
+            (default_user_id, "default"),
         )
         results = c.fetchall()
     favourites = []
@@ -186,7 +273,9 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     ]
 
     # Answer the inline query
-    await update.inline_query.answer(results, cache_time=0)
+    await update.inline_query.answer(
+        results, cache_time=1, auto_pagination=True, is_personal=True
+    )
 
 
 # Function to update the frequency of the sticker used

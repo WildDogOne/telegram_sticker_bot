@@ -8,8 +8,8 @@ from telegram.ext import (
 )
 from config.config import token
 from pprint import pprint
-from bot_functions import *
-from global_functions import c
+from functions.bot_functions import *
+from functions.global_functions import c
 
 
 def init_db():
@@ -50,15 +50,31 @@ def init_db():
 def main() -> None:
     application = Application.builder().token(token).build()
 
-    conv_handler = ConversationHandler(
+    add_sticker_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Sticker.ALL, sticker)],
         states={
             KEYWORDS: [MessageHandler(filters.TEXT & ~filters.COMMAND, keywords)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
+    add_pack_handler = ConversationHandler(
+        entry_points=[CommandHandler("newpack", newpack)],
+        states={
+            PACKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, packname)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+    select_pack_handler = ConversationHandler(
+        entry_points=[CommandHandler("pack", pack)],
+        states={
+            SELECTPACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, selectpack)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
 
-    application.add_handler(conv_handler)
+    application.add_handler(add_sticker_handler)
+    application.add_handler(add_pack_handler)
+    application.add_handler(select_pack_handler)
     application.add_handler(InlineQueryHandler(inline_query))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("packs", get_packs))
