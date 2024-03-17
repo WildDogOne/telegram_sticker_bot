@@ -10,7 +10,7 @@ from telegram.ext import (
     ConversationHandler,
 )
 
-from functions.global_functions import *
+from functions.global_functions import c, conn, logger, NEWPACKNAME, SELECTPACK, DELETEPACK
 from functions.bot_functions import send_message_to_admin
 
 
@@ -27,11 +27,12 @@ async def get_current_pack(user_id):
 
 
 ### New Pack
+#### Step 1: Ask for the name of the pack
 async def newpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("What is the name of the pack?")
     return NEWPACKNAME
 
-
+#### Step 2: Save the pack name
 async def newpackname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     pack = update.message.text
@@ -55,6 +56,7 @@ async def newpackname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 
 ### Select Pack
+#### Step 1: Ask for the pack to use
 async def pack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     print(user_id)
@@ -76,7 +78,7 @@ async def pack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return SELECTPACK
 
-
+#### Step 2: Save the pack to use
 async def selectpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     pack = update.message.text
@@ -96,6 +98,7 @@ async def selectpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 ### Delete Pack
+#### Step 1: Ask for the pack to delete
 async def delpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     print(user_id)
@@ -107,7 +110,6 @@ async def delpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = []
     for x in results:
         keyboard.append([KeyboardButton(x[0])])
-    pprint(keyboard)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, resize_keyboard=True, one_time_keyboard=True
     )
@@ -117,7 +119,7 @@ async def delpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return DELETEPACK
 
-
+#### Step 2: Delete the pack
 async def deletepack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     pack = update.message.text
