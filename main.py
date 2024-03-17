@@ -9,10 +9,25 @@ from telegram.ext import (
 )
 from config.config import token
 from functions.bot_functions import start, cancel
-from functions.pack_functions import pack, newpack, newpackname, get_packs, selectpack, deletepack, delpack
-from functions.sticker_functions import sticker, keywords
+from functions.pack_functions import (
+    pack,
+    newpack,
+    newpackname,
+    get_packs,
+    selectpack,
+    deletepack,
+    delpack,
+)
+from functions.sticker_functions import sticker, keywords, delete_sticker, deletesticker
 from functions.inline_functions import chosen_inline_result, inline_query
-from functions.global_functions import c, KEYWORDS, NEWPACKNAME, SELECTPACK, DELETEPACK
+from functions.global_functions import (
+    c,
+    KEYWORDS,
+    NEWPACKNAME,
+    SELECTPACK,
+    DELETEPACK,
+    DELETESTICKER,
+)
 
 
 def init_db():
@@ -59,7 +74,10 @@ def main() -> None:
         states={
             KEYWORDS: [MessageHandler(filters.TEXT & ~filters.COMMAND, keywords)],
         },
-        fallbacks=[CommandHandler("cancel", cancel)],
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+        ],
+        per_user=True,
     )
     add_pack_handler = ConversationHandler(
         entry_points=[CommandHandler("newpack", newpack)],
@@ -82,15 +100,24 @@ def main() -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
+    delete_sticker_handler = ConversationHandler(
+        entry_points=[CommandHandler("delete_sticker", delete_sticker)],
+        states={
+            DELETESTICKER: [MessageHandler(filters.Sticker.ALL, deletesticker)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        per_user=True,
+    )
 
-    application.add_handler(add_sticker_handler)
     application.add_handler(add_pack_handler)
     application.add_handler(select_pack_handler)
     application.add_handler(delete_pack_handler)
+    application.add_handler(delete_sticker_handler)
     application.add_handler(InlineQueryHandler(inline_query))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("packs", get_packs))
     application.add_handler(ChosenInlineResultHandler(chosen_inline_result))
+    application.add_handler(add_sticker_handler)
     application.run_polling()
 
 

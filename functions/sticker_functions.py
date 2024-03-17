@@ -9,6 +9,8 @@ from telegram import (
     InlineQueryResultCachedSticker,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
 )
 from telegram.ext import (
     Application,
@@ -21,14 +23,15 @@ from telegram.ext import (
     ChosenInlineResultHandler,
 )
 
-from config.config import token, default_user_id, owner_id
+from config.config import token, default_user_id, owner_id, botname
 from functions.global_functions import *
 from functions.pack_functions import get_current_pack
 from functions.bot_functions import send_message_to_admin
 
 
 
-### Sticker Handler
+### Add Sticker
+#### Step 1: Ask for keywords for sent sticker
 async def sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     file_id = update.message.sticker.file_id
@@ -41,7 +44,7 @@ async def sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return KEYWORDS
 
-
+#### Step 2: Save the sticker
 async def keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keywords = update.message.text
     user_id, file_id, file_unique_id, emojies = context.user_data["sticker"]
@@ -60,4 +63,26 @@ async def keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.error("Error while saving sticker")
         logger.error(e)
         await send_message_to_admin(f"Error while saving sticker\n{e}")
+    return ConversationHandler.END
+
+### Delete Sticker
+#### Step 1: Give list of stickers available
+
+async def delete_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text(
+        f"Reply with a sticker you want to delete.\nYou can use {botname} to select stickers.\nOr send /cancel to cancel."
+    )
+    return DELETESTICKER
+
+#### Step 2: Delete the sticker
+async def deletesticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    file_unique_id = update.message.sticker.file_unique_id
+    pprint(update.message.sticker)
+    c.execute(
+        "DELETE FROM stickers WHERE user_id = ? AND file_unique_id = ?",
+        (user_id, file_unique_id),
+    )
+    conn.commit()
+    await update.message.reply_text("Sticker deleted!")
     return ConversationHandler.END
