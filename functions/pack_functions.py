@@ -32,8 +32,12 @@ def packkeyboard(user_id):
     )
     results = c.fetchall()
     keyboard = []
-    for x in results:
-        keyboard.append([KeyboardButton(x[0])])
+    for i in range(0, len(results), 2):
+        row = []
+        row.append(KeyboardButton(results[i][0]))
+        if i+1 < len(results):
+            row.append(KeyboardButton(results[i+1][0]))
+        keyboard.append(row)
     keyboard.append([KeyboardButton("/cancel")])
     reply_markup = ReplyKeyboardMarkup(
         keyboard, resize_keyboard=True, one_time_keyboard=True
