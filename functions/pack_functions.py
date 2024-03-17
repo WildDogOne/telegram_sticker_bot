@@ -68,7 +68,6 @@ async def pack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = []
     for x in results:
         keyboard.append([KeyboardButton(x[0])])
-    pprint(keyboard)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, resize_keyboard=True, one_time_keyboard=True
     )
