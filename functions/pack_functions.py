@@ -25,6 +25,21 @@ async def get_current_pack(user_id):
     else:
         return results[0][0]
 
+def packkeyboard(user_id):
+    c.execute(
+        "SELECT pack FROM user_packs WHERE user_id = ?",
+        (user_id,),
+    )
+    results = c.fetchall()
+    keyboard = []
+    for x in results:
+        keyboard.append([KeyboardButton(x[0])])
+    keyboard.append([KeyboardButton("/cancel")])
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard, resize_keyboard=True, one_time_keyboard=True
+    )
+    return reply_markup
+
 
 ### New Pack
 #### Step 1: Ask for the name of the pack
@@ -59,18 +74,7 @@ async def newpackname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 #### Step 1: Ask for the pack to use
 async def pack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
-    print(user_id)
-    c.execute(
-        "SELECT pack FROM user_packs WHERE user_id = ?",
-        (user_id,),
-    )
-    results = c.fetchall()
-    keyboard = []
-    for x in results:
-        keyboard.append([KeyboardButton(x[0])])
-    reply_markup = ReplyKeyboardMarkup(
-        keyboard, resize_keyboard=True, one_time_keyboard=True
-    )
+    reply_markup = packkeyboard(user_id)
 
     await update.message.reply_text(
         "Which pack do you want to use?", reply_markup=reply_markup
@@ -96,22 +100,15 @@ async def selectpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
+
+
+
 ### Delete Pack
 #### Step 1: Ask for the pack to delete
 async def delpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     print(user_id)
-    c.execute(
-        "SELECT pack FROM user_packs WHERE user_id = ?",
-        (user_id,),
-    )
-    results = c.fetchall()
-    keyboard = []
-    for x in results:
-        keyboard.append([KeyboardButton(x[0])])
-    reply_markup = ReplyKeyboardMarkup(
-        keyboard, resize_keyboard=True, one_time_keyboard=True
-    )
+    reply_markup = packkeyboard(user_id)
 
     await update.message.reply_text(
         "Which pack do you want to delete?", reply_markup=reply_markup
@@ -128,10 +125,19 @@ async def deletepack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return ConversationHandler.END
     else:
+        # Delete pack from user_packs
         c.execute(
             """
             DELETE FROM user_packs
             Where user_id = ? AND pack = ?;
+            """,
+            (user_id, pack),
+        )
+        # Delete stickers associated with pack
+        c.execute(
+            """
+            DELETE FROM stickers
+            Where user_id = ? AND pack_id = ?;
             """,
             (user_id, pack),
         )

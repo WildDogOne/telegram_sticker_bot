@@ -25,8 +25,8 @@ async def set_commands():
     commands = [
         BotCommand(command="/start", description="Start the bot"),
         BotCommand(command="/help", description="Get help information"),
-        BotCommand(command="/packs", description="Get your packs"),
         BotCommand(command="/pack", description="Set Pack to use"),
+        BotCommand(command="/packs", description="Get your packs"),
         BotCommand(command="/newpack", description="New pack"),
         BotCommand(command="/delpack", description="Remove a pack"),
         BotCommand(command="/cancel", description="Cancel action"),

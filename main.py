@@ -25,6 +25,7 @@ def init_db():
         "file_id"  TEXT NOT NULL,
         "keywords"  TEXT,
         "emojies"  TEXT,
+        "CLIP" TEXT,
         "frequency" INT DEFAULT 0,
         PRIMARY KEY("user_id","file_unique_id","pack_id")
         );

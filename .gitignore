@@ -133,3 +133,6 @@ dmypy.json
 stickers.db
 /config/config.py
 .vscode/launch.json
+deepbooru
+data/*.png
+data/*.webp

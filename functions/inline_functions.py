@@ -19,7 +19,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     pack_id = await get_current_pack(user_id)
 
     # Fetch favorites from the database
-    SQL_QUERY = "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? AND pack_id = ? ORDER BY frequency DESC"
+    SQL_QUERY = "SELECT file_unique_id, file_id, keywords, emojies, CLIP, frequency FROM stickers WHERE user_id = ? AND pack_id = ? ORDER BY frequency DESC"
     c.execute(
         SQL_QUERY,
         (user_id, pack_id),
@@ -33,7 +33,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         results = c.fetchall()
     favourites = []
     for result in results:
-        file_unique_id, file_id, keywords, emojies, frequency = result
+        file_unique_id, file_id, keywords, emojies, clip, frequency = result
         x = {
             "file_unique_id": file_unique_id,
             "file_id": file_id,
@@ -47,6 +47,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if query.strip() in emojies:
                 favourites.append(x)
             elif fuzz.token_set_ratio(query, keywords) > 50:
+                favourites.append(x)
+            elif fuzz.token_set_ratio(query, clip) > 50:
                 favourites.append(x)
 
     # Convert favorites to inline query results
