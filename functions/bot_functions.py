@@ -1,30 +1,16 @@
 from telegram import (
     Bot,
     BotCommand,
-    ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
-    InlineQueryResultArticle,
-    InputTextMessageContent,
-    InlineQueryResultCachedSticker,
-    ReplyKeyboardMarkup,
-    KeyboardButton,
 )
 from telegram.ext import (
-    Application,
-    CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
     ConversationHandler,
-    InlineQueryHandler,
-    ChosenInlineResultHandler,
 )
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 
-from config.config import token, default_user_id, owner_id
-from functions.global_functions import *
+from config.config import token, owner_id
+from functions.global_functions import c, conn, logger
 
 
 # Helper function to send a message to the admin
@@ -40,8 +26,9 @@ async def set_commands():
         BotCommand(command="/start", description="Start the bot"),
         BotCommand(command="/help", description="Get help information"),
         BotCommand(command="/packs", description="Get your packs"),
-        BotCommand(command="/pack", description="Set Pack"),
+        BotCommand(command="/pack", description="Set Pack to use"),
         BotCommand(command="/newpack", description="New pack"),
+        BotCommand(command="/delpack", description="Remove a pack"),
         BotCommand(command="/cancel", description="Cancel action"),
         # Add more commands as needed
     ]

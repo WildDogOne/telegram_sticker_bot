@@ -1,29 +1,13 @@
 from telegram import (
-    Bot,
-    BotCommand,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
     Update,
-    InlineQueryResultArticle,
-    InputTextMessageContent,
     InlineQueryResultCachedSticker,
-    ReplyKeyboardMarkup,
-    KeyboardButton,
 )
 from telegram.ext import (
-    Application,
-    CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
-    ConversationHandler,
-    InlineQueryHandler,
-    ChosenInlineResultHandler,
 )
 from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 
-from config.config import token, default_user_id, owner_id
+from config.config import default_user_id
 from functions.global_functions import *
 from functions.pack_functions import get_current_pack
 

@@ -8,12 +8,11 @@ from telegram.ext import (
     ChosenInlineResultHandler,
 )
 from config.config import token
-from pprint import pprint
 from functions.bot_functions import start, cancel
-from functions.pack_functions import pack, newpack, packname, get_packs, selectpack
+from functions.pack_functions import pack, newpack, newpackname, get_packs, selectpack, deletepack, delpack
 from functions.sticker_functions import sticker, keywords
 from functions.inline_functions import chosen_inline_result, inline_query
-from functions.global_functions import c, KEYWORDS, PACKNAME, SELECTPACK
+from functions.global_functions import c, KEYWORDS, NEWPACKNAME, SELECTPACK, DELETEPACK
 
 
 def init_db():
@@ -64,7 +63,7 @@ def main() -> None:
     add_pack_handler = ConversationHandler(
         entry_points=[CommandHandler("newpack", newpack)],
         states={
-            PACKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, packname)],
+            NEWPACKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, newpackname)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
@@ -75,10 +74,18 @@ def main() -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
+    delete_pack_handler = ConversationHandler(
+        entry_points=[CommandHandler("delpack", delpack)],
+        states={
+            DELETEPACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, deletepack)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
 
     application.add_handler(add_sticker_handler)
     application.add_handler(add_pack_handler)
     application.add_handler(select_pack_handler)
+    application.add_handler(delete_pack_handler)
     application.add_handler(InlineQueryHandler(inline_query))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("packs", get_packs))

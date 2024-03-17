@@ -1,24 +1,13 @@
 from telegram import (
-    Bot,
-    BotCommand,
+    ReplyKeyboardMarkup,
+    Update,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
-    Update,
-    InlineQueryResultArticle,
-    InputTextMessageContent,
-    InlineQueryResultCachedSticker,
-    ReplyKeyboardMarkup,
     KeyboardButton,
 )
 from telegram.ext import (
-    Application,
-    CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
     ConversationHandler,
-    InlineQueryHandler,
-    ChosenInlineResultHandler,
 )
 
 from functions.global_functions import *
@@ -37,17 +26,15 @@ async def get_current_pack(user_id):
         return results[0][0]
 
 
-### Pack Handlers
-#### Add a new pack
+### New Pack
 async def newpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("What is the name of the pack?")
-    return PACKNAME
+    return NEWPACKNAME
 
 
-async def packname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def newpackname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     pack = update.message.text
-    # context.user_data["packname"] = (user_id)
     try:
         c.execute(
             "INSERT INTO user_packs (user_id, pack) VALUES (?, ?)",
@@ -64,8 +51,10 @@ async def packname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await send_message_to_admin(
                 f"Error while adding pack to user {user_id}\n{e}"
             )
+    return ConversationHandler.END
 
 
+### Select Pack
 async def pack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     print(user_id)
@@ -100,8 +89,59 @@ async def selectpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         (pack, user_id),
     )
     conn.commit()
-    await update.message.reply_text(f"Selected {pack}")
+    await update.message.reply_text(
+        f"Selected {pack}", reply_markup=ReplyKeyboardRemove()
+    )
+    return ConversationHandler.END
 
+
+### Delete Pack
+async def delpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    print(user_id)
+    c.execute(
+        "SELECT pack FROM user_packs WHERE user_id = ?",
+        (user_id,),
+    )
+    results = c.fetchall()
+    keyboard = []
+    for x in results:
+        keyboard.append([KeyboardButton(x[0])])
+    pprint(keyboard)
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard, resize_keyboard=True, one_time_keyboard=True
+    )
+
+    await update.message.reply_text(
+        "Which pack do you want to delete?", reply_markup=reply_markup
+    )
+    return DELETEPACK
+
+
+async def deletepack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    pack = update.message.text
+    if pack == "default":
+        await update.message.reply_text(
+            "You can't delete the default pack", reply_markup=ReplyKeyboardRemove()
+        )
+        return ConversationHandler.END
+    else:
+        c.execute(
+            """
+            DELETE FROM user_packs
+            Where user_id = ? AND pack = ?;
+            """,
+            (user_id, pack),
+        )
+        conn.commit()
+        await update.message.reply_text(
+            f"Removed {pack}", reply_markup=ReplyKeyboardRemove()
+        )
+        return ConversationHandler.END
+
+
+### Output Packs
 async def get_packs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     c.execute(

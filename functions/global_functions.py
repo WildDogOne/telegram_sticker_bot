@@ -13,7 +13,7 @@ c = conn.cursor()
 
 
 # State Definition
-STICKER, KEYWORDS, PACKNAME, SELECTPACK = range(4)
+STICKER, KEYWORDS, NEWPACKNAME, SELECTPACK, DELETEPACK = range(5)
 
 
 # Rich Console
