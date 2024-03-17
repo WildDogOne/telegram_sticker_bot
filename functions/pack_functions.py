@@ -48,7 +48,7 @@ def packkeyboard(user_id):
 ### New Pack
 #### Step 1: Ask for the name of the pack
 async def newpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("What is the name of the pack?")
+    await update.message.reply_text("What is the name of the pack?\nUse /cancel to cancel")
     return NEWPACKNAME
 
 #### Step 2: Save the pack name
