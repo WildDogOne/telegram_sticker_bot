@@ -23,7 +23,7 @@ console = Console()
 install(show_locals=True)
 
 # Logging Handler
-FORMAT = "%(asctime)s %(message)s"
+FORMAT = "%(message)s"
 logging.basicConfig(
     level="INFO",
     format=FORMAT,

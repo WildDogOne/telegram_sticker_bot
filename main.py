@@ -8,7 +8,7 @@ from telegram.ext import (
     ChosenInlineResultHandler,
 )
 from config.config import token
-from functions.bot_functions import start, cancel
+from functions.bot_functions import start, cancel, help
 from functions.pack_functions import (
     pack,
     newpack,
@@ -115,6 +115,7 @@ def main() -> None:
     application.add_handler(delete_sticker_handler)
     application.add_handler(InlineQueryHandler(inline_query))
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help))
     application.add_handler(CommandHandler("packs", get_packs))
     application.add_handler(ChosenInlineResultHandler(chosen_inline_result))
     application.add_handler(add_sticker_handler)

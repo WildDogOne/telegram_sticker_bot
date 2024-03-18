@@ -38,6 +38,18 @@ async def set_commands():
 
 
 # Telegram Bot
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(
+        "Send me a sticker and I will store it for you.\n"
+        "After that, you can use the inline mode to search for your stickers.\n"
+        "To change keywords on a sticker, just send the same sticker again, you can use the inline mode to search for your stickers.\n"
+        "Other commands:\n"
+        "/pack - Set Pack to use, normaly this will be default unless you created a new pack\n"
+        "/packs - Get your packs\n"
+        "/newpack - Make a new pack\n"
+        "/delpack - Remove a pack\n"
+        "/delete_sticker - Delete a sticker from the current pack"
+    )
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "Hi! Send me a sticker and I will store it for you.\n"

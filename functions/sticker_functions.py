@@ -1,26 +1,9 @@
 from telegram import (
-    Bot,
-    BotCommand,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
     Update,
-    InlineQueryResultArticle,
-    InputTextMessageContent,
-    InlineQueryResultCachedSticker,
-    ReplyKeyboardMarkup,
-    KeyboardButton,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
 )
 from telegram.ext import (
-    Application,
-    CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
     ConversationHandler,
-    InlineQueryHandler,
-    ChosenInlineResultHandler,
 )
 
 from config.config import token, default_user_id, owner_id, botname
