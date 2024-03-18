@@ -12,6 +12,26 @@ from functions.pack_functions import get_current_pack
 from functions.bot_functions import send_message_to_admin
 
 
+async def initialize_user(user_id):
+    pack_id = "default"
+    pack = "default"
+    try:
+        c.execute(
+            "INSERT INTO users (user_id, current_pack) VALUES (?, ?)",
+            (user_id, pack_id),
+        )
+    except Exception as e:
+        if type(e).__name__ != "IntegrityError":
+            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
+    try:
+        c.execute(
+            "INSERT INTO user_packs (user_id, pack) VALUES (?, ?)",
+            (user_id, pack),
+        )
+        conn.commit()
+    except Exception as e:
+        if type(e).__name__ != "IntegrityError":
+            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
 
 ### Add Sticker
 #### Step 1: Ask for keywords for sent sticker
@@ -20,6 +40,7 @@ async def sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     file_id = update.message.sticker.file_id
     file_unique_id = update.message.sticker.file_unique_id
     emojies = update.message.sticker.emoji
+    await initialize_user(user_id)
     pprint(update.message.sticker)
     # Check if sticker is already in DB
     c.execute(
