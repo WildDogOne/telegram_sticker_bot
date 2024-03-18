@@ -46,12 +46,12 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         else:
             if query.strip() in emojies:
                 favourites.append(x)
-            elif fuzz.token_set_ratio(query, keywords) > 50:
+            elif fuzz.token_set_ratio(query, keywords) > 70:
                 favourites.append(x)
-            elif fuzz.token_set_ratio(query, clip) > 50:
+            elif fuzz.token_set_ratio(query, clip) > 70:
                 favourites.append(x)
 
-    # Convert favorites to inline query results
+    # Convert favorites to inline query results#
     results = [
         InlineQueryResultCachedSticker(
             id=str(result["file_unique_id"]),  # id must be unique and a string
