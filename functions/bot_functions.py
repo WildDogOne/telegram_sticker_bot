@@ -27,9 +27,9 @@ async def set_commands():
         BotCommand(command="/help", description="Get help information"),
         BotCommand(command="/pack", description="Set Pack to use"),
         BotCommand(command="/packs", description="Get your packs"),
+        BotCommand(command="/delete_sticker", description="Delete a sticker from the current pack"),
         BotCommand(command="/newpack", description="New pack"),
         BotCommand(command="/delpack", description="Remove a pack"),
-        BotCommand(command="/delete_sticker", description="Delete a sticker from the current pack"),
         BotCommand(command="/cancel", description="Cancel action"),
         # Add more commands as needed
     ]
