@@ -8,8 +8,10 @@ touching the developer's real config.py/stickers.db, we inject a fake
 `config.config` module into sys.modules *before* anything under `functions/`
 or `main` gets imported, pointing `db` at an in-memory sqlite database.
 """
+import itertools
 import sys
 import types
+from datetime import datetime
 
 TEST_DEFAULT_USER_ID = 999999
 
@@ -70,6 +72,26 @@ def no_telegram_api_calls(monkeypatch):
     monkeypatch.setattr("functions.bot_functions.set_commands", AsyncMock())
 
 
+@pytest.fixture(autouse=True)
+def no_real_message_network_calls(monkeypatch):
+    """telegram.Message is a frozen TelegramObject - real instances built by
+    make_real_update() can't have reply_text stubbed per-instance, so stub it
+    at the class level instead (reverted by monkeypatch after each test)."""
+    from telegram import Message
+
+    monkeypatch.setattr(Message, "reply_text", AsyncMock())
+
+
+@pytest.fixture(autouse=True)
+def reset_error_alert_cooldown():
+    """error_handler()'s per-exception-type rate limit is module-level state - clear it
+    between tests so one test's alert doesn't suppress another's."""
+    import functions.bot_functions as bot_functions
+
+    bot_functions._last_error_alert.clear()
+    yield
+
+
 def make_user(user_id=1, first_name="Test"):
     user = MagicMock()
     user.id = user_id
@@ -119,6 +141,56 @@ def make_context():
     context = MagicMock()
     context.user_data = {}
     return context
+
+
+# --- Real (non-Mock) Update/Message helpers ---
+#
+# ConversationHandler.check_update() does `isinstance(update, Update)` and reads
+# update.effective_chat/effective_user - a plain MagicMock can't satisfy that. These
+# helpers build real telegram objects so tests can drive the actual routing logic
+# (check_update/handle_update), e.g. to verify that starting one flow correctly
+# interrupts another rather than the two conversations racing.
+from telegram import Chat, Message, MessageEntity, Sticker as TgSticker, Update, User
+
+_FAKE_TELEGRAM_BOT = types.SimpleNamespace(username="TestStickerBot")
+_next_id = itertools.count(1)
+
+
+def make_real_sticker(file_id="file-id-1", file_unique_id="unique-1", emoji="😀"):
+    return TgSticker(
+        file_id=file_id,
+        file_unique_id=file_unique_id,
+        width=512,
+        height=512,
+        is_animated=False,
+        is_video=False,
+        type=TgSticker.REGULAR,
+        emoji=emoji,
+    )
+
+
+def make_real_update(user_id=1, text=None, sticker=None):
+    """A real Update/Message pair. `Message.reply_text` is stubbed at the class
+    level by the `no_real_message_network_calls` autouse fixture, since Message
+    is a frozen TelegramObject and can't have per-instance attributes set.
+    `chat.id == user_id` mirrors how Telegram private chats work."""
+    chat = Chat(id=user_id, type=Chat.PRIVATE)
+    user = User(id=user_id, is_bot=False, first_name="Test")
+    entities = None
+    if text and text.startswith("/"):
+        command = text.split()[0]
+        entities = [MessageEntity(type=MessageEntity.BOT_COMMAND, offset=0, length=len(command))]
+    message = Message(
+        message_id=next(_next_id),
+        date=datetime.now(),
+        chat=chat,
+        from_user=user,
+        text=text,
+        entities=entities,
+        sticker=sticker,
+    )
+    message.set_bot(_FAKE_TELEGRAM_BOT)
+    return Update(update_id=next(_next_id), message=message)
 
 
 def insert_sticker(

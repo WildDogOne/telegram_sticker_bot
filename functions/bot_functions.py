@@ -1,3 +1,6 @@
+import traceback
+from datetime import datetime, timedelta
+
 from telegram import (
     Bot,
     BotCommand,
@@ -17,6 +20,37 @@ from functions.global_functions import c, conn, logger
 async def send_message_to_admin(text):
     bot = Bot(token=token)
     await bot.send_message(chat_id=owner_id, text=text)
+
+
+# Global fallback error handler, registered via application.add_error_handler().
+# Catches anything individual handlers don't already handle themselves, so a
+# bug never fails silently. DMs to the owner are rate-limited per exception
+# type so a crash loop can't spam the bot's own Telegram account.
+ERROR_ALERT_COOLDOWN = timedelta(minutes=5)
+_last_error_alert: dict[str, datetime] = {}
+
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    error = context.error
+    logger.error("Unhandled exception while processing an update", exc_info=error)
+
+    key = type(error).__name__
+    now = datetime.now()
+    last_sent = _last_error_alert.get(key)
+    if last_sent is not None and now - last_sent < ERROR_ALERT_COOLDOWN:
+        return
+    _last_error_alert[key] = now
+
+    update_str = update.to_dict() if isinstance(update, Update) else str(update)
+    tb = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+    message = (
+        f"Unhandled exception: {type(error).__name__}: {error}\n\n"
+        f"Update: {update_str}\n\n"
+        f"{tb}"
+    )
+    if len(message) > 4000:
+        message = message[:4000] + "\n... (truncated)"
+    await send_message_to_admin(message)
 
 
 async def set_commands():

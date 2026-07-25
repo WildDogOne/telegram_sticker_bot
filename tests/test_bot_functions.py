@@ -1,7 +1,7 @@
 from telegram.ext import ConversationHandler
 
 from conftest import make_context, make_message_update
-from functions.bot_functions import cancel, start
+from functions.bot_functions import cancel, error_handler, start
 from functions.global_functions import c
 
 
@@ -36,3 +36,36 @@ async def test_cancel_ends_conversation():
 
     assert result == ConversationHandler.END
     update.message.reply_text.assert_awaited_once()
+
+
+async def test_error_handler_notifies_admin(no_admin_dm):
+    context = make_context()
+    context.error = ValueError("boom")
+
+    await error_handler("some update", context)
+
+    no_admin_dm.assert_awaited_once()
+    assert "ValueError" in no_admin_dm.await_args.args[0]
+    assert "boom" in no_admin_dm.await_args.args[0]
+
+
+async def test_error_handler_rate_limits_repeated_same_type(no_admin_dm):
+    context = make_context()
+    context.error = ValueError("first")
+
+    await error_handler("update-1", context)
+    context.error = ValueError("second")
+    await error_handler("update-2", context)  # same exception type, should be throttled
+
+    no_admin_dm.assert_awaited_once()
+
+
+async def test_error_handler_does_not_throttle_different_exception_types(no_admin_dm):
+    context = make_context()
+    context.error = ValueError("first")
+    await error_handler("update-1", context)
+
+    context.error = KeyError("second")
+    await error_handler("update-2", context)
+
+    assert no_admin_dm.await_count == 2

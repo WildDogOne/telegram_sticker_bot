@@ -4,7 +4,6 @@ from rich.traceback import install
 import logging
 from rich.logging import RichHandler
 from config.config import db
-from pprint import pprint
 
 
 # SQLite Connection

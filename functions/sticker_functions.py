@@ -41,7 +41,7 @@ async def sticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     file_unique_id = update.message.sticker.file_unique_id
     emojies = update.message.sticker.emoji
     await initialize_user(user_id)
-    pprint(update.message.sticker)
+    logger.debug(f"Received sticker from user {user_id}: {update.message.sticker}")
     # Check if sticker is already in DB
     c.execute(
         "SELECT keywords FROM stickers WHERE user_id = ? AND file_unique_id = ?",
@@ -67,7 +67,10 @@ async def keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id, file_id, file_unique_id, emojies, exists = context.user_data["sticker"]
     # pack_id = "default"
     pack_id = await get_current_pack(user_id)
-    print(user_id, pack_id, file_unique_id, file_id, keywords, emojies)
+    logger.debug(
+        f"Saving sticker for user {user_id}: pack={pack_id} file_unique_id={file_unique_id} "
+        f"file_id={file_id} keywords={keywords!r} emojies={emojies!r}"
+    )
     try:
         if exists:
             c.execute(
@@ -102,7 +105,7 @@ async def deletesticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     user_id = update.message.from_user.id
     file_unique_id = update.message.sticker.file_unique_id
     pack_id = await get_current_pack(user_id)
-    pprint(update.message.sticker)
+    logger.debug(f"Deleting sticker for user {user_id}: {update.message.sticker}")
     c.execute(
         "DELETE FROM stickers WHERE user_id = ? AND file_unique_id = ? AND pack_id = ?",
         (user_id, file_unique_id, pack_id),

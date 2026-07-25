@@ -14,8 +14,7 @@ from functions.pack_functions import get_current_pack
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.inline_query.query
     user_id = update.inline_query.from_user.id
-    print(user_id)
-    print(query)
+    logger.debug(f"Inline query from user {user_id}: {query!r}")
     pack_id = await get_current_pack(user_id)
 
     # Fetch favorites from the database

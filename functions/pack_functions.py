@@ -111,7 +111,7 @@ async def selectpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 #### Step 1: Ask for the pack to delete
 async def delpack(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
-    print(user_id)
+    logger.debug(f"delpack requested by user {user_id}")
     reply_markup = packkeyboard(user_id)
 
     await update.message.reply_text(
