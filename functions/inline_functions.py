@@ -74,10 +74,6 @@ async def chosen_inline_result(
     file_unique_id = update.chosen_inline_result.result_id
     user_id = update.chosen_inline_result.from_user.id
     c.execute(
-        "SELECT file_unique_id, file_id, keywords, emojies, frequency FROM stickers WHERE user_id = ? ORDER BY frequency DESC",
-        (default_user_id,),
-    )
-    c.execute(
         """
         Update stickers
         Set frequency = frequency + 1
