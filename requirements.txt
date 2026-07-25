@@ -1,5 +1,4 @@
-python-telegram-bot==21.0.1
-rich
-fuzzywuzzy
-python-Levenshtein
-python-telegram-bot[job-queue]
+python-telegram-bot==22.8
+rich==15.0.0
+thefuzz
+levenshtein==0.27.3

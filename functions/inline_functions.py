@@ -5,7 +5,7 @@ from telegram import (
 from telegram.ext import (
     ContextTypes,
 )
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 
 from config.config import default_user_id
 from functions.global_functions import *
