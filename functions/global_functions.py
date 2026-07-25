@@ -30,10 +30,6 @@ logging.basicConfig(
     handlers=[
         RichHandler(
             rich_tracebacks=True,
-            # locals_max_length=None,
-            # locals_max_string=None,
-            # tracebacks_word_wrap=False,
-            # show_path=True,
         )
     ],
 )
