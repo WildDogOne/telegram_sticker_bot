@@ -45,3 +45,16 @@ Edit it with at least your Bot token.
 2. pip install -r requirements.txt
 3. You don't necessarily need the tagger requirements unless you want to run tagger.py (more advanced and not needed)
 
+### Running
+
+Always launch the bot from the repository root:
+
+```bash
+python main.py
+```
+
+`stickers.db`, `config/config.py`, `./data`, and `./deepbooru` are all
+referenced as relative paths, so they're resolved from whatever directory
+the process is started in. If you run this as a service (e.g. systemd), make
+sure its working directory is set to the repository root.
+
