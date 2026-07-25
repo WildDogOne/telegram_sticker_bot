@@ -136,3 +136,5 @@ stickers.db
 deepbooru
 data/*.png
 data/*.webp
+/CLAUDE.md
+.claude
