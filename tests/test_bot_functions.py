@@ -1,8 +1,27 @@
 from telegram.ext import ConversationHandler
 
 from conftest import make_context, make_message_update
-from functions.bot_functions import cancel, error_handler, start
+from functions.bot_functions import cancel, error_handler, initialize_user, start
 from functions.global_functions import c
+
+
+async def test_initialize_user_creates_user_and_default_pack():
+    is_new_user = await initialize_user(user_id=7)
+
+    assert is_new_user is True
+    c.execute("SELECT current_pack FROM users WHERE user_id = ?", (7,))
+    assert c.fetchall() == [("default",)]
+    c.execute("SELECT pack FROM user_packs WHERE user_id = ?", (7,))
+    assert c.fetchall() == [("default",)]
+
+
+async def test_initialize_user_is_idempotent(no_admin_dm):
+    assert await initialize_user(user_id=7) is True
+    assert await initialize_user(user_id=7) is False  # must not raise on the duplicate INSERT
+
+    c.execute("SELECT * FROM users WHERE user_id = ?", (7,))
+    assert len(c.fetchall()) == 1
+    no_admin_dm.assert_not_awaited()
 
 
 async def test_start_creates_user_and_default_pack():

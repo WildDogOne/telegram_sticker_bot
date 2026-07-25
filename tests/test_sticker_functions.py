@@ -9,30 +9,7 @@ from conftest import (
     make_sticker,
 )
 from functions.global_functions import c
-from functions.sticker_functions import (
-    deletesticker,
-    initialize_user,
-    keywords,
-    sticker,
-)
-
-
-async def test_initialize_user_creates_user_and_default_pack():
-    await initialize_user(user_id=7)
-
-    c.execute("SELECT current_pack FROM users WHERE user_id = ?", (7,))
-    assert c.fetchall() == [("default",)]
-    c.execute("SELECT pack FROM user_packs WHERE user_id = ?", (7,))
-    assert c.fetchall() == [("default",)]
-
-
-async def test_initialize_user_is_idempotent(no_admin_dm):
-    await initialize_user(user_id=7)
-    await initialize_user(user_id=7)  # must not raise on the duplicate INSERT
-
-    c.execute("SELECT * FROM users WHERE user_id = ?", (7,))
-    assert len(c.fetchall()) == 1
-    no_admin_dm.assert_not_awaited()
+from functions.sticker_functions import deletesticker, keywords, sticker
 
 
 async def test_sticker_new_sticker_asks_for_keywords():

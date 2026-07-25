@@ -71,6 +71,32 @@ async def set_commands():
     await bot.set_my_commands(commands)
 
 
+async def initialize_user(user_id) -> bool:
+    """Ensure user_id has a `users` row and a "default" pack. Returns True if this
+    was a new user, False if they were already registered."""
+    is_new_user = True
+    try:
+        c.execute(
+            "INSERT INTO users (user_id, current_pack) VALUES (?, ?)",
+            (user_id, "default"),
+        )
+    except Exception as e:
+        if type(e).__name__ == "IntegrityError":
+            is_new_user = False
+        else:
+            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
+    try:
+        c.execute(
+            "INSERT INTO user_packs (user_id, pack) VALUES (?, ?)",
+            (user_id, "default"),
+        )
+        conn.commit()
+    except Exception as e:
+        if type(e).__name__ != "IntegrityError":
+            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
+    return is_new_user
+
+
 # Telegram Bot
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
@@ -92,32 +118,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await set_commands()
 
     user_id = update.effective_user.id
-    pack_id = "default"
-    pack = "default"
-    try:
-        c.execute(
-            "INSERT INTO users (user_id, current_pack) VALUES (?, ?)",
-            (user_id, pack_id),
-        )
-    except Exception as e:
-        if type(e).__name__ == "IntegrityError":
-            await update.message.reply_text("I already know you!")
-            logger.info(f"Error while saving user {user_id}, user already exists")
-            logger.info(e)
-        else:
-            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
-    try:
-        c.execute(
-            "INSERT INTO user_packs (user_id, pack) VALUES (?, ?)",
-            (user_id, pack),
-        )
-        conn.commit()
-    except Exception as e:
-        if type(e).__name__ == "IntegrityError":
-            logger.info(f"Error while adding default pack to user {user_id}")
-            logger.info(e)
-        else:
-            await send_message_to_admin(f"Error while saving user {user_id}\n{e}")
+    is_new_user = await initialize_user(user_id)
+    if not is_new_user:
+        await update.message.reply_text("I already know you!")
+        logger.info(f"User {user_id} ran /start again, already registered")
 
 
 
