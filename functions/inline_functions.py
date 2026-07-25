@@ -40,15 +40,17 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "emojies": emojies,
             "frequency": frequency,
         }
-        if query == None:
+        if not query:
+            # No query typed yet (Telegram sends "" here, never None) - browse everything.
             favourites.append(x)
-        else:
-            if query.strip() in emojies:
-                favourites.append(x)
-            elif fuzz.token_set_ratio(query, keywords) > 70:
-                favourites.append(x)
-            elif fuzz.token_set_ratio(query, clip) > 70:
-                favourites.append(x)
+        elif emojies and query.strip() in emojies:
+            # emojies can be NULL for a sticker saved without one - Telegram always sends an
+            # emoji in practice, but guard against it anyway rather than crash on `in None`.
+            favourites.append(x)
+        elif fuzz.token_set_ratio(query, keywords) > 70:
+            favourites.append(x)
+        elif fuzz.token_set_ratio(query, clip) > 70:
+            favourites.append(x)
 
     # Convert favorites to inline query results#
     results = [

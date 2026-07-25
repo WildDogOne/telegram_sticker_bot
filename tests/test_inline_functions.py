@@ -1,5 +1,3 @@
-import pytest
-
 from conftest import (
     insert_sticker,
     make_chosen_inline_result_update,
@@ -66,16 +64,26 @@ async def test_inline_query_falls_back_to_default_pack_when_user_has_none():
     assert _returned_ids(update) == {"shared"}
 
 
-@pytest.mark.xfail(
-    reason="known bug: stickers saved with no emoji store NULL, and "
-    "`query.strip() in emojies` crashes on None for any non-empty query",
-    strict=True,
-)
-async def test_inline_query_does_not_crash_on_sticker_without_emoji():
+async def test_inline_query_matches_sticker_without_emoji_via_keywords():
+    # A sticker with a NULL emojies column (Telegram always sends an emoji in practice,
+    # but the column is nullable) must not crash the emoji-substring check, and should
+    # still be findable by its keywords.
     insert_sticker(user_id=1, file_unique_id="u1", keywords="cat happy", emojies=None)
     update = make_inline_query_update(user_id=1, query="cat")
 
     await inline_query(update, make_context())
+
+    assert _returned_ids(update) == {"u1"}
+
+
+async def test_inline_query_empty_query_returns_everything_including_no_emoji_stickers():
+    insert_sticker(user_id=1, file_unique_id="with-emoji", keywords="cat", emojies="😀")
+    insert_sticker(user_id=1, file_unique_id="no-emoji", keywords="dog", emojies=None)
+    update = make_inline_query_update(user_id=1, query="")
+
+    await inline_query(update, make_context())
+
+    assert _returned_ids(update) == {"with-emoji", "no-emoji"}
 
 
 async def test_chosen_inline_result_increments_frequency():
