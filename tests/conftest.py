@@ -140,6 +140,14 @@ def make_chosen_inline_result_update(user_id=1, file_unique_id="unique-1"):
 def make_context():
     context = MagicMock()
     context.user_data = {}
+    # Real fire-and-forget calls hand a live coroutine to application.create_task();
+    # a bare MagicMock would never await/close it, leaking a "coroutine was never
+    # awaited" warning into every test that reaches that code path. Closing it here
+    # keeps the default context usable as a no-op while still recording the call
+    # (call_args etc.) for tests that want to assert on it.
+    context.application.create_task = MagicMock(
+        side_effect=lambda coro, **kwargs: coro.close() if hasattr(coro, "close") else None
+    )
     return context
 
 

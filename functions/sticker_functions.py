@@ -10,6 +10,7 @@ from config.config import token, default_user_id, owner_id, botname
 from functions.global_functions import *
 from functions.pack_functions import get_current_pack
 from functions.bot_functions import initialize_user, send_message_to_admin
+from functions.tagging_functions import tag_sticker_background
 
 ### Add Sticker
 #### Step 1: Ask for keywords for sent sticker
@@ -62,6 +63,14 @@ async def keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             )
         conn.commit()
         await update.message.reply_text("Sticker saved!")
+        if not exists:
+            # Fire-and-forget: auto-tagging is best-effort and shouldn't block the
+            # reply above. Any exception it raises reaches the bot's normal
+            # error_handler/send_message_to_admin path via Application.create_task.
+            context.application.create_task(
+                tag_sticker_background(context.bot, user_id, pack_id, file_id, file_unique_id),
+                update=update,
+            )
     except Exception as e:
         await update.message.reply_text("Error while saving!")
         logger.error("Error while saving sticker")

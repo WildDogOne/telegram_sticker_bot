@@ -5,6 +5,7 @@ A Telegram bot for storing, managing, and retrieving stickers with ease. Built u
 ## Features
 
 - **Store stickers**: Send stickers to the bot and assign keywords for easy retrieval.
+- **Auto-tagging**: New stickers are automatically tagged in the background using two models — one for anime art, one for furry art — improving fuzzy search without touching your own keywords.
 - **Inline retrieval**: Use the bot inline in any chat to search and send stickers.
 - **Fuzzy search**: Search stickers using partial or approximate keywords.
 - **Pack management**: Organize stickers into packs for better organization.
@@ -26,7 +27,7 @@ A Telegram bot for storing, managing, and retrieving stickers with ease. Built u
 
 ### Prerequisites
 
-- Python 3.x+ (Tested on 3.13 and 3.14)
+- Python 3.12 (pinned via `.python-version` — the auto-tagging stack (`torch`/`onnxruntime`) doesn't yet support the newest CPython releases)
 - A Telegram bot token (obtain from [@BotFather](https://t.me/BotFather))
 
 ### Installation
@@ -60,10 +61,18 @@ A Telegram bot for storing, managing, and retrieving stickers with ease. Built u
    ```
 
    > **Note**: Always run the bot from the repository root.
-   > The bot uses relative paths for `stickers.db`, `config/config.py`, `./data`, and `./deepbooru`.
+   > The bot uses relative paths for `stickers.db`, `config/config.py`, and `./data`.
    > If running as a service (e.g., systemd), ensure the working directory is set to the repository root.
+   > The auto-tagging models (~1-2GB total) download on first use into the standard Hugging Face cache (`~/.cache/huggingface/hub`), not into the repo.
 
 ## Optional Features
 
-- **Advanced tagging**: Install `requirements_tagger.txt` to enable optional tagging features (e.g., `tagger.py`).
 - **Development dependencies**: Install `requirements-dev.txt` for testing and development tools.
+
+## Backfilling tags
+
+`tagger.py` runs the same auto-tagging used on new stickers against any existing sticker still missing a tag (e.g. ones saved before this feature existed):
+
+```bash
+python tagger.py
+```

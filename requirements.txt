@@ -2,3 +2,17 @@ python-telegram-bot==22.8
 rich==15.0.0
 thefuzz
 levenshtein==0.27.3
+
+# Auto-tagging (functions/tagging_functions.py, used on every new sticker + by tagger.py):
+# WD-EVA02 (anime, Danbooru tags) via onnxruntime + JTP (furry, e621 tags) via torch/timm.
+# Both are CPU-only here (see CUDA_VISIBLE_DEVICES pin in tagging_functions.py); torch's
+# default PyPI wheel bundles CUDA support unused on this box - install from
+# https://download.pytorch.org/whl/cpu instead if you want a smaller download.
+numpy>=1.16.2
+pillow>=12.3.0
+huggingface_hub
+onnxruntime
+torch
+torchvision
+timm
+safetensors

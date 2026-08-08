@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 from telegram.ext import ConversationHandler
 
 from conftest import (
@@ -54,6 +56,38 @@ async def test_keywords_inserts_new_sticker():
     )
     assert c.fetchall() == [("cat happy", "😀")]
     assert result == ConversationHandler.END
+
+
+async def test_keywords_schedules_auto_tagging_for_new_sticker(monkeypatch):
+    insert_user(user_id=1, current_pack="default")
+    update = make_message_update(user_id=1, text="cat happy")
+    context = make_context()
+    context.user_data["sticker"] = (1, "file-id-1", "unique-1", "😀", False)
+
+    sentinel_coroutine = object()
+    mock_tagger = MagicMock(return_value=sentinel_coroutine)
+    monkeypatch.setattr("functions.sticker_functions.tag_sticker_background", mock_tagger)
+
+    await keywords(update, context)
+
+    mock_tagger.assert_called_once_with(context.bot, 1, "default", "file-id-1", "unique-1")
+    context.application.create_task.assert_called_once_with(sentinel_coroutine, update=update)
+
+
+async def test_keywords_does_not_reschedule_tagging_for_existing_sticker(monkeypatch):
+    insert_user(user_id=1, current_pack="default")
+    insert_sticker(user_id=1, file_unique_id="unique-1", keywords="old keywords")
+    update = make_message_update(user_id=1, text="new keywords")
+    context = make_context()
+    context.user_data["sticker"] = (1, "file-id-1", "unique-1", "😀", True)
+
+    mock_tagger = MagicMock()
+    monkeypatch.setattr("functions.sticker_functions.tag_sticker_background", mock_tagger)
+
+    await keywords(update, context)
+
+    mock_tagger.assert_not_called()
+    context.application.create_task.assert_not_called()
 
 
 async def test_keywords_updates_existing_sticker():
