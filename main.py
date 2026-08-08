@@ -20,6 +20,7 @@ from functions.pack_functions import (
 )
 from functions.sticker_functions import sticker, keywords, delete_sticker, deletesticker
 from functions.inline_functions import chosen_inline_result, inline_query
+from functions.tagging_functions import retag
 from functions.global_functions import (
     c,
     KEYWORDS,
@@ -110,6 +111,7 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
     application.add_handler(CommandHandler("packs", get_packs))
+    application.add_handler(CommandHandler("retag", retag))
     application.add_handler(ChosenInlineResultHandler(chosen_inline_result))
     application.add_error_handler(error_handler)
     return application

@@ -8,6 +8,10 @@ import threading
 # than have them probe for CUDA and fail to find one.
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
 
+from telegram import Update
+from telegram.ext import ContextTypes
+
+from config.config import owner_id
 from functions.global_functions import c, conn, logger
 
 DATA_DIR = "./data"
@@ -302,3 +306,56 @@ async def tag_sticker_background(bot, user_id, pack_id, file_id, file_unique_id)
     )
     conn.commit()
     logger.debug(f"Auto-tagged sticker {file_unique_id} for user {user_id}: {tags!r}")
+
+
+async def retag_stickers_background(bot, chat_id):
+    """Fire-and-forget: re-runs auto-tagging for every sticker in the DB, overwriting
+    any existing CLIP tags - unlike tagger.py's backfill, which only fills in
+    stickers still missing one. Triggered by the admin-only /retag command; reports
+    a summary back to chat_id when done rather than propagating errors per-sticker,
+    since one bad download/inference shouldn't abort the whole run."""
+    c.execute("SELECT user_id, pack_id, file_id, file_unique_id FROM stickers")
+    stickers = c.fetchall()
+    os.makedirs(DATA_DIR, exist_ok=True)
+    loop = asyncio.get_running_loop()
+
+    tagged = 0
+    failed = 0
+    for user_id, pack_id, file_id, file_unique_id in stickers:
+        webp_path = os.path.join(DATA_DIR, f"{file_unique_id}.webp")
+        try:
+            file = await bot.get_file(file_id)
+            await file.download_to_drive(webp_path)
+            tags = await loop.run_in_executor(None, generate_tags, webp_path)
+            c.execute(
+                "UPDATE stickers SET CLIP = ? WHERE user_id = ? AND file_unique_id = ? AND pack_id = ?",
+                (tags, user_id, file_unique_id, pack_id),
+            )
+            conn.commit()
+            tagged += 1
+        except Exception as e:
+            failed += 1
+            logger.error(f"Failed to retag sticker {file_unique_id}: {e}")
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=f"Re-tagging complete: {tagged} tagged, {failed} failed, {len(stickers)} total.",
+    )
+
+
+async def retag(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin-only /retag command: re-tags every sticker in the DB in the background.
+    Useful after a tagger/threshold change, as an on-demand equivalent of running
+    `tagger.py -d` without shelling into the server."""
+    if update.effective_user.id != owner_id:
+        await update.message.reply_text("This command is only available to the bot admin.")
+        return
+    c.execute("SELECT COUNT(*) FROM stickers")
+    total = c.fetchone()[0]
+    await update.message.reply_text(
+        f"Re-tagging {total} stickers in the background, I'll message you when done."
+    )
+    context.application.create_task(
+        retag_stickers_background(context.bot, update.effective_chat.id),
+        update=update,
+    )
