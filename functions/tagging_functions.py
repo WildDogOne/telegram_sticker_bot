@@ -16,6 +16,11 @@ from functions.global_functions import c, conn, logger
 
 DATA_DIR = "./data"
 
+# Optional: set to a Hugging Face access token (https://huggingface.co/settings/tokens)
+# to avoid anonymous-download rate limits when fetching the tagger models. Unset/empty
+# falls back to unauthenticated downloads, same as before this existed.
+HF_TOKEN = os.environ.get("HF_TOKEN") or None
+
 # Two independent taggers, merged into one CLIP string: WD-EVA02 is trained on Danbooru
 # (anime) tags, JTP is trained on e621 (furry) tags - neither vocabulary covers the
 # other, and stickers here are a mix of both styles. Replaces the old DeepDanbooru
@@ -84,8 +89,8 @@ def _ensure_wd_loaded():
         import onnxruntime as ort
         from huggingface_hub import hf_hub_download
 
-        model_path = hf_hub_download(WD_REPO, "model.onnx")
-        tags_path = hf_hub_download(WD_REPO, "selected_tags.csv")
+        model_path = hf_hub_download(WD_REPO, "model.onnx", token=HF_TOKEN)
+        tags_path = hf_hub_download(WD_REPO, "selected_tags.csv", token=HF_TOKEN)
         # Left at its default, onnxruntime sizes its intra-op thread pool off the host's
         # total core count and then pthread_setaffinity_np's each thread to a specific
         # core - inside a container whose cgroup cpuset doesn't cover every core Linux
@@ -237,11 +242,15 @@ def _ensure_jtp_loaded():
         from safetensors.torch import load_model
 
         model, transform = _build_jtp_model()
-        checkpoint_path = hf_hub_download(JTP_REPO, JTP_CHECKPOINT, subfolder=JTP_SUBFOLDER)
+        checkpoint_path = hf_hub_download(
+            JTP_REPO, JTP_CHECKPOINT, subfolder=JTP_SUBFOLDER, token=HF_TOKEN
+        )
         load_model(model, checkpoint_path)
         model.eval()
 
-        tags_path = hf_hub_download(JTP_REPO, JTP_TAGS_FILE, subfolder=JTP_SUBFOLDER)
+        tags_path = hf_hub_download(
+            JTP_REPO, JTP_TAGS_FILE, subfolder=JTP_SUBFOLDER, token=HF_TOKEN
+        )
         with open(tags_path, encoding="utf-8") as f:
             tag_keys = list(json.load(f).keys())
 
