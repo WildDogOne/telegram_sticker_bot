@@ -11,15 +11,17 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
 from telegram import Update
 from telegram.ext import ContextTypes
 
+import config.config as _config
 from config.config import owner_id
 from functions.global_functions import c, conn, logger
 
 DATA_DIR = "./data"
 
-# Optional: set to a Hugging Face access token (https://huggingface.co/settings/tokens)
-# to avoid anonymous-download rate limits when fetching the tagger models. Unset/empty
-# falls back to unauthenticated downloads, same as before this existed.
-HF_TOKEN = os.environ.get("HF_TOKEN") or None
+# Optional `hf_token` in config.py (see config.py.example) avoids anonymous-download
+# rate limits when fetching the tagger models. getattr rather than a direct import so
+# configs predating this setting don't need to be touched - missing/empty falls back
+# to unauthenticated downloads, same as before this existed.
+HF_TOKEN = getattr(_config, "hf_token", None) or None
 
 # Two independent taggers, merged into one CLIP string: WD-EVA02 is trained on Danbooru
 # (anime) tags, JTP is trained on e621 (furry) tags - neither vocabulary covers the

@@ -49,6 +49,7 @@ A Telegram bot for storing, managing, and retrieving stickers with ease. Built u
      | `owner_id`      | Bot owner's Telegram ID (optional, for troubleshooting).                    |
      | `default_user_id` | Fallback user ID (optional).                                               |
      | `botname`       | Name of the bot (optional).                                                 |
+     | `hf_token`      | Hugging Face access token, to avoid rate limits on model downloads (optional). |
 
 3. **Install dependencies**:
    ```bash
@@ -64,7 +65,7 @@ A Telegram bot for storing, managing, and retrieving stickers with ease. Built u
    > The bot uses relative paths for `stickers.db`, `config/config.py`, and `./data`.
    > If running as a service (e.g., systemd), ensure the working directory is set to the repository root.
    > The auto-tagging models (~1-2GB total) download on first use into the standard Hugging Face cache (`~/.cache/huggingface/hub`), not into the repo.
-   > If you hit Hugging Face's anonymous-download rate limit, set the `HF_TOKEN` environment variable to an [access token](https://huggingface.co/settings/tokens) before running the bot or `tagger.py`. Without it, downloads fall back to unauthenticated.
+   > If you hit Hugging Face's anonymous-download rate limit, set `hf_token` in `config/config.py` to an [access token](https://huggingface.co/settings/tokens). Leave it empty to keep downloads unauthenticated.
 
 ## Optional Features
 

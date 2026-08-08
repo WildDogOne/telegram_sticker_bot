@@ -3,3 +3,7 @@ db = 'stickers.db'
 owner_id = 123
 default_user_id = 0
 botname = "@StickerFavourites"
+# Optional: a Hugging Face access token (https://huggingface.co/settings/tokens),
+# used when downloading the auto-tagging models to avoid anonymous rate limits.
+# Leave empty to download unauthenticated.
+hf_token = ""
