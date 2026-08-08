@@ -7,6 +7,7 @@ from telegram import (
     ReplyKeyboardRemove,
     Update,
 )
+from telegram.error import Forbidden
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
@@ -32,6 +33,13 @@ _last_error_alert: dict[str, datetime] = {}
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     error = context.error
+    if isinstance(error, Forbidden):
+        # A user blocking the bot (Telegram still delivers their message, e.g. a
+        # stale /start, before the block registers on our side) is routine and not
+        # actionable - there's no user left to reply to and nothing for the admin to
+        # fix, so just log it instead of alerting like an unexpected bug.
+        logger.info(f"Ignoring Forbidden error (user likely blocked the bot): {error}")
+        return
     logger.error("Unhandled exception while processing an update", exc_info=error)
 
     key = type(error).__name__

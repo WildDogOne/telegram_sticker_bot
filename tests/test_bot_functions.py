@@ -1,3 +1,4 @@
+from telegram.error import Forbidden
 from telegram.ext import ConversationHandler
 
 from conftest import make_context, make_message_update
@@ -88,3 +89,14 @@ async def test_error_handler_does_not_throttle_different_exception_types(no_admi
     await error_handler("update-2", context)
 
     assert no_admin_dm.await_count == 2
+
+
+async def test_error_handler_ignores_forbidden_bot_blocked(no_admin_dm):
+    # A user blocking the bot is routine, not a bug - it must never page the admin,
+    # regardless of the cooldown logic that applies to genuine unexpected errors.
+    context = make_context()
+    context.error = Forbidden("Forbidden: bot was blocked by the user")
+
+    await error_handler("update-1", context)
+
+    no_admin_dm.assert_not_awaited()
