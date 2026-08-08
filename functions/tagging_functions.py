@@ -82,7 +82,17 @@ def _ensure_wd_loaded():
 
         model_path = hf_hub_download(WD_REPO, "model.onnx")
         tags_path = hf_hub_download(WD_REPO, "selected_tags.csv")
-        _wd_session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+        # Left at its default, onnxruntime sizes its intra-op thread pool off the host's
+        # total core count and then pthread_setaffinity_np's each thread to a specific
+        # core - inside a container whose cgroup cpuset doesn't cover every core Linux
+        # reports, that pin fails (EINVAL) and spams stderr on every load. Passing an
+        # explicit thread count skips that auto-affinity step entirely; sched_getaffinity
+        # gives the cores this process can actually run on rather than the host total.
+        session_options = ort.SessionOptions()
+        session_options.intra_op_num_threads = len(os.sched_getaffinity(0))
+        _wd_session = ort.InferenceSession(
+            model_path, sess_options=session_options, providers=["CPUExecutionProvider"]
+        )
         _, height, _, _ = _wd_session.get_inputs()[0].shape
         _wd_target_size = height
         with open(tags_path, newline="", encoding="utf-8") as f:
