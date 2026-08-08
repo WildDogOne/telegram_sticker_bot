@@ -138,3 +138,4 @@ data/*.webp
 /CLAUDE.md
 .claude
 ISSUES.md
+.gitignore
