@@ -3,6 +3,9 @@ import csv
 import json
 import os
 import threading
+import time
+
+from tqdm.std import tqdm as _vanilla_tqdm
 
 # The server this runs on has no GPU - keep torch/onnxruntime off it explicitly rather
 # than have them probe for CUDA and fail to find one.
@@ -22,6 +25,35 @@ DATA_DIR = "./data"
 # configs predating this setting don't need to be touched - missing/empty falls back
 # to unauthenticated downloads, same as before this existed.
 HF_TOKEN = getattr(_config, "hf_token", None) or None
+
+
+class _LoggingProgress(_vanilla_tqdm):
+    """Passed to hf_hub_download as `tqdm_class` so model-download progress goes to
+    our logger every ~30s instead of a redrawing terminal progress bar, which is
+    unreadable in Docker/journald logs. Subclassing vanilla tqdm (rather than
+    huggingface_hub's own tqdm wrapper) is deliberate: huggingface_hub silently
+    disables its own wrapper outside a tty, but leaves other classes' `disable` at
+    their own default (see huggingface_hub.utils.tqdm._create_progress_bar), which
+    for vanilla tqdm is False - so this always runs, tty or not."""
+
+    _LOG_INTERVAL_SECONDS = 30
+
+    def __init__(self, *args, **kwargs):
+        kwargs["disable"] = False
+        # tqdm.__init__ itself calls refresh()/display() before returning (to show the
+        # initial 0% state), so this needs to exist before super().__init__() runs.
+        self._last_logged = 0.0
+        super().__init__(*args, **kwargs)
+
+    def display(self, msg=None, pos=None):
+        # Never do the actual terminal redraw - just throttle our own log line off
+        # of the same update ticks.
+        now = time.monotonic()
+        if self.total and (now - self._last_logged >= self._LOG_INTERVAL_SECONDS or self.n >= self.total):
+            self._last_logged = now
+            pct = 100 * self.n / self.total
+            logger.info(f"{self.desc}: {self.n / 1e6:.1f}/{self.total / 1e6:.1f} MB ({pct:.0f}%)")
+
 
 # Two independent taggers, merged into one CLIP string: WD-EVA02 is trained on Danbooru
 # (anime) tags, JTP is trained on e621 (furry) tags - neither vocabulary covers the
@@ -91,8 +123,10 @@ def _ensure_wd_loaded():
         import onnxruntime as ort
         from huggingface_hub import hf_hub_download
 
-        model_path = hf_hub_download(WD_REPO, "model.onnx", token=HF_TOKEN)
-        tags_path = hf_hub_download(WD_REPO, "selected_tags.csv", token=HF_TOKEN)
+        logger.info(f"Downloading WD-EVA02 tagger model from {WD_REPO} (first run only)...")
+        model_path = hf_hub_download(WD_REPO, "model.onnx", token=HF_TOKEN, tqdm_class=_LoggingProgress)
+        tags_path = hf_hub_download(WD_REPO, "selected_tags.csv", token=HF_TOKEN, tqdm_class=_LoggingProgress)
+        logger.info("WD-EVA02 tagger model downloaded.")
         # Left at its default, onnxruntime sizes its intra-op thread pool off the host's
         # total core count and then pthread_setaffinity_np's each thread to a specific
         # core - inside a container whose cgroup cpuset doesn't cover every core Linux
@@ -244,14 +278,16 @@ def _ensure_jtp_loaded():
         from safetensors.torch import load_model
 
         model, transform = _build_jtp_model()
+        logger.info(f"Downloading JTP tagger model from {JTP_REPO} (first run only)...")
         checkpoint_path = hf_hub_download(
-            JTP_REPO, JTP_CHECKPOINT, subfolder=JTP_SUBFOLDER, token=HF_TOKEN
+            JTP_REPO, JTP_CHECKPOINT, subfolder=JTP_SUBFOLDER, token=HF_TOKEN, tqdm_class=_LoggingProgress
         )
+        logger.info("JTP tagger model downloaded.")
         load_model(model, checkpoint_path)
         model.eval()
 
         tags_path = hf_hub_download(
-            JTP_REPO, JTP_TAGS_FILE, subfolder=JTP_SUBFOLDER, token=HF_TOKEN
+            JTP_REPO, JTP_TAGS_FILE, subfolder=JTP_SUBFOLDER, token=HF_TOKEN, tqdm_class=_LoggingProgress
         )
         with open(tags_path, encoding="utf-8") as f:
             tag_keys = list(json.load(f).keys())
