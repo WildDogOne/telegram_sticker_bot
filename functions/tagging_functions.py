@@ -29,7 +29,34 @@ JTP_CHECKPOINT = "JTP_PILOT2-e3-vit_so400m_patch14_siglip_384.safetensors"
 JTP_TAGS_FILE = "tags.json"
 JTP_MODEL_NAME = "vit_so400m_patch14_siglip_384.webli"
 JTP_NUM_CLASSES = 9083
-JTP_THRESHOLD = 0.20
+# RedRocket's own docs call 0.20 just "a starting point" (recall-oriented) - for search
+# relevance we want precision instead, so this is tuned higher than their default to cut
+# down the long tail of weak, generic detections that make every sticker's tag set look
+# alike.
+JTP_THRESHOLD = 0.4
+
+# Tags that describe the *sticker's format* rather than its content - they show up on
+# almost every image regardless of what's depicted, so they add zero search value and
+# just dilute fuzzy matching against tags that actually distinguish one sticker from
+# another. Applied to both models' output. Extend this if new noise tags turn up.
+NOISE_TAGS = frozenset(
+    {
+        "simple_background",
+        "white_background",
+        "grey_background",
+        "gray_background",
+        "transparent_background",
+        "digital_media_(artwork)",
+        "telegram_sticker",
+        "sticker",
+        "watermark",
+        "artist_name",
+        "signature",
+        "web_address",
+        "patreon_username",
+        "third-party_watermark",
+    }
+)
 
 # Both models are loaded once per process and reused across stickers, guarded by a lock
 # since multiple stickers can be tagged concurrently via run_in_executor's thread pool.
@@ -85,12 +112,19 @@ def _wd_infer(image) -> list:
     input_name = _wd_session.get_inputs()[0].name
     output_name = _wd_session.get_outputs()[0].name
     probs = _wd_session.run([output_name], {input_name: _wd_prepare_image(image)})[0][0]
+    # Tag names keep their underscores (e.g. "simple_background") rather than becoming
+    # spaces - this is just the canonical Danbooru/e621 tag form and easier to read back
+    # from the DB. Note it does NOT change fuzzy-match behavior: thefuzz's own
+    # preprocessing (utils.full_process) converts underscores to spaces before comparing
+    # either way, so multi-word tags are tokenized into their component words for
+    # matching purposes regardless of how they're joined here. Actual search-noise
+    # control happens via NOISE_TAGS and the confidence thresholds below.
     tags = []
     for (name, category), prob in zip(_wd_tags, probs):
         if category == WD_GENERAL_CATEGORY and prob >= WD_GENERAL_THRESHOLD:
-            tags.append(name.replace("_", " "))
+            tags.append(name)
         elif category == WD_CHARACTER_CATEGORY and prob >= WD_CHARACTER_THRESHOLD:
-            tags.append(name.replace("_", " "))
+            tags.append(name)
     return tags
 
 
@@ -199,7 +233,9 @@ def _ensure_jtp_loaded():
 
         _jtp_model = model
         _jtp_transform = transform
-        _jtp_tags = [tag.replace("_", " ") for tag in tag_keys]
+        # Keep underscores - see the comment in _wd_infer for why this doesn't affect
+        # fuzzy-match behavior, just readability/canonical form.
+        _jtp_tags = tag_keys
 
 
 def _jtp_infer(image) -> list:
@@ -217,7 +253,7 @@ def _merge_tag_lists(*tag_lists) -> str:
     merged = []
     for tags in tag_lists:
         for tag in tags:
-            if tag not in seen:
+            if tag not in seen and tag not in NOISE_TAGS:
                 seen.add(tag)
                 merged.append(tag)
     return " ".join(merged)

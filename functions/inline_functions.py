@@ -1,3 +1,5 @@
+from collections import Counter
+
 from telegram import (
     Update,
     InlineQueryResultCachedSticker,
@@ -10,6 +12,38 @@ from thefuzz import fuzz
 from config.config import default_user_id
 from functions.global_functions import *
 from functions.pack_functions import get_current_pack
+
+# Auto-generated CLIP tags that are true for most of a pack's stickers (e.g. a pack
+# that's almost entirely anthro canines will have "fur"/"mammal"/"canine" on nearly
+# every sticker) add no discriminating power to fuzzy search, even though they're
+# accurate. Rather than hardcoding a stoplist - which would wrongly drop a tag like
+# "canine" the moment the pack becomes more diverse - frequency is computed fresh per
+# query against the exact pack being searched, so it adapts as the pack's content mix
+# changes. Only applied to CLIP (auto-generated); user-written `keywords` are never
+# filtered. Skipped below CLIP_FREQUENCY_MIN_POOL since "common" is meaningless noise
+# on a handful of stickers.
+CLIP_FREQUENCY_THRESHOLD = 0.5
+CLIP_FREQUENCY_MIN_POOL = 10
+
+
+def _ubiquitous_clip_tags(clip_values) -> set:
+    tag_counts = Counter()
+    pool_size = 0
+    for clip in clip_values:
+        if not clip:
+            continue
+        pool_size += 1
+        tag_counts.update(set(clip.split()))
+    if pool_size < CLIP_FREQUENCY_MIN_POOL:
+        return set()
+    return {tag for tag, count in tag_counts.items() if count / pool_size > CLIP_FREQUENCY_THRESHOLD}
+
+
+def _strip_tags(text, tags_to_strip: set) -> str:
+    if not text or not tags_to_strip:
+        return text
+    return " ".join(tag for tag in text.split() if tag not in tags_to_strip)
+
 
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.inline_query.query
@@ -30,6 +64,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             (default_user_id, "default"),
         )
         results = c.fetchall()
+    ubiquitous_tags = _ubiquitous_clip_tags(result[4] for result in results)
     favourites = []
     for result in results:
         file_unique_id, file_id, keywords, emojies, clip, frequency = result
@@ -49,7 +84,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             favourites.append(x)
         elif fuzz.token_set_ratio(query, keywords) > 70:
             favourites.append(x)
-        elif fuzz.token_set_ratio(query, clip) > 70:
+        elif fuzz.token_set_ratio(query, _strip_tags(clip, ubiquitous_tags)) > 70:
             favourites.append(x)
 
     # Convert favorites to inline query results#

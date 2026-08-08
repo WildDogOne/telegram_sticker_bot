@@ -17,6 +17,13 @@ def test_merge_tag_lists_handles_empty_lists():
     assert _merge_tag_lists([], []) == ""
 
 
+def test_merge_tag_lists_drops_format_noise_tags():
+    wd_tags = ["1girl", "simple_background", "solo"]
+    jtp_tags = ["telegram_sticker", "canine", "watermark"]
+
+    assert _merge_tag_lists(wd_tags, jtp_tags) == "1girl solo canine"
+
+
 def make_bot():
     bot = MagicMock()
     file = MagicMock()

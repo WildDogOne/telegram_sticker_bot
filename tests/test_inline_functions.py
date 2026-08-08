@@ -86,6 +86,55 @@ async def test_inline_query_empty_query_returns_everything_including_no_emoji_st
     assert _returned_ids(update) == {"with-emoji", "no-emoji"}
 
 
+async def test_inline_query_ignores_clip_tag_common_across_whole_pack():
+    # "fur" appears on every sticker in this pack (>10, so the frequency filter kicks
+    # in) - it should no longer be enough on its own to match, since it can't
+    # distinguish any one sticker from the rest.
+    for i in range(12):
+        insert_sticker(
+            user_id=1,
+            file_unique_id=f"common-{i}",
+            keywords="",
+            emojies=None,
+            clip="fur mammal",
+        )
+    insert_sticker(user_id=1, file_unique_id="distinct", keywords="", emojies=None, clip="fur mammal wolf")
+    update = make_inline_query_update(user_id=1, query="fur")
+
+    await inline_query(update, make_context())
+
+    assert _returned_ids(update) == set()
+
+
+async def test_inline_query_still_matches_distinctive_clip_tag():
+    for i in range(12):
+        insert_sticker(
+            user_id=1,
+            file_unique_id=f"common-{i}",
+            keywords="",
+            emojies=None,
+            clip="fur mammal",
+        )
+    insert_sticker(user_id=1, file_unique_id="distinct", keywords="", emojies=None, clip="fur mammal wolf")
+    update = make_inline_query_update(user_id=1, query="wolf")
+
+    await inline_query(update, make_context())
+
+    assert _returned_ids(update) == {"distinct"}
+
+
+async def test_inline_query_skips_frequency_filter_on_small_pack():
+    # Below CLIP_FREQUENCY_MIN_POOL, "common" isn't a meaningful signal - a shared tag
+    # should still be matchable.
+    insert_sticker(user_id=1, file_unique_id="u1", keywords="", emojies=None, clip="fur mammal")
+    insert_sticker(user_id=1, file_unique_id="u2", keywords="", emojies=None, clip="fur mammal")
+    update = make_inline_query_update(user_id=1, query="fur")
+
+    await inline_query(update, make_context())
+
+    assert _returned_ids(update) == {"u1", "u2"}
+
+
 async def test_chosen_inline_result_increments_frequency():
     insert_sticker(user_id=1, file_unique_id="u1", frequency=0)
     update = make_chosen_inline_result_update(user_id=1, file_unique_id="u1")
