@@ -54,6 +54,18 @@ def clean_db():
 
 
 @pytest.fixture(autouse=True)
+def reset_retag_state():
+    """_retag_state is module-level, and make_context()'s create_task stub closes
+    the background coroutine instead of running it - so a test that starts /retag
+    without awaiting the background task directly would otherwise leave
+    running=True leaking into later tests."""
+    from functions.tagging_functions import _retag_state
+
+    _retag_state.update(running=False, total=0, tagged=0, failed=0, started_at=None)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def no_admin_dm(monkeypatch):
     """Never let a test actually hit the Telegram API to DM the bot owner."""
     mock = AsyncMock()

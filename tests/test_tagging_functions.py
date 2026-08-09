@@ -104,6 +104,25 @@ async def test_retag_admin_starts_background_task():
     context.application.create_task.assert_called_once()
 
 
+async def test_retag_reports_progress_instead_of_starting_second_run(monkeypatch):
+    from functions.tagging_functions import _retag_state
+
+    monkeypatch.setattr(
+        "functions.tagging_functions.time.monotonic", lambda: 100.0
+    )
+    _retag_state.update(running=True, total=5, tagged=2, failed=1, started_at=70.0)
+    update = make_message_update(user_id=OWNER_ID, text="/retag")
+    context = make_context()
+
+    await retag(update, context)
+
+    update.message.reply_text.assert_awaited_once_with(
+        "Re-tagging is already running: 3/5 processed (2 tagged, 1 failed), "
+        "started 30s ago."
+    )
+    context.application.create_task.assert_not_called()
+
+
 async def test_retag_stickers_background_retags_all_and_reports_summary(monkeypatch):
     insert_user(user_id=1, current_pack="default")
     insert_sticker(user_id=1, file_unique_id="u1", clip="old tag")
